@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+//oioioi
 typedef struct {
     unsigned char *nome_do_membro;
     unsigned int UID;
