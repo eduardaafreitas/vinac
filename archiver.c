@@ -17,3 +17,15 @@ membros *alloc_membro(){ //aloca estrutura membro
     return membro;
 }
 
+void inserir(membros *membro){
+    if(!membro)
+    return -1;
+
+    if (membro->anterior){
+        membro->anterior->proximo = membro;
+        membro->proximo = NULL;
+        membro->anterior = NULL;
+    } 
+
+    return 0;
+}

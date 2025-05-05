@@ -3,10 +3,9 @@
 
 #include <time.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-//oioioi
-typedef struct {
+
+
+struct membros {
     unsigned char *nome_do_membro;
     unsigned int UID;
     unsigned long tamanho_original;
@@ -16,13 +15,14 @@ typedef struct {
     unsigned long offset;
     struct membros *anterior;
     struct membros *proximo;
-} membros;
+};
+typedef struct membros membros;
 
-typedef struct {
+struct archive {
     FILE *diretorio;
     membros *membro;
-} archive;
-
+};
+typedef struct archive archive;
 
 membros *alloc_membro();
 void inserir(membros *membro);
