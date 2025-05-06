@@ -3,6 +3,9 @@
 
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 
 struct membros {
@@ -13,11 +16,10 @@ struct membros {
     time_t data_modificacao;
     unsigned int ordem_arquivo;
     unsigned long offset;
-    struct membros *anterior;
-    struct membros *proximo;
+    
 };
 typedef struct membros membros;
-
+//vetor de ponteiros
 struct archive {
     FILE *diretorio;
     membros *membro;
