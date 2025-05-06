@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 #include "archiver.h"
 
@@ -11,8 +10,11 @@ int main(int argc, char *argv[]){
     while ((option = getopt(argc, argv, "p:i:m:x:r:c")) != -1) {
         switch (option) {
             case 'p':
-                archive_name = strdup(optarg);
-                inserir(membro);
+                archive_name = strcat(strdup(optarg), ".vc");
+                arq = inicia_archive(archive_name);
+                for (int i = optind; i < argc; i++) {
+                    inserir(membro, archive_name, arq, argv[i]);  // Inserir cada membro
+                }
                 break;
             case 'i':
                 printf("-i em implementacao...\n");
