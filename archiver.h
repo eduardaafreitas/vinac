@@ -16,24 +16,24 @@ struct membros {
     time_t data_modificacao;
     unsigned int ordem_arquivo;
     unsigned long offset;
-    
 };
 typedef struct membros membros;
-//vetor de ponteiros
 
-struct archive {
-    FILE *diretorio;
-    membros *membro;
-};
-typedef struct archive archive;
+//diretorio => vetor de ponteiros
+
+// struct archive {
+//     FILE *diretorio;
+//     membros *membro;
+// };
+// typedef struct archive archive;
 
 membros *alloc_membro();
 FILE *inicia_archive(char *archive_name);
 
 int stats(const char *file_name, membros *membro);
 
-void inserir(membros *membro, char *archive_name, FILE *arq, char *member_name);
-void escrever_diretorio(archive *arq, membros *membro);
+void inserir(membros *membro, char *archive_name, char *member_name);
+void escrever_diretorio(FILE *arq, membros *membro);
 
 
 membros *remover(membros *membro);
