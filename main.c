@@ -1,43 +1,78 @@
 #define _GNU_SOURCE
-#define MAX_MEMBER 50
 #include "archiver.h"
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
     int option;
     char *archive_name;
-    //FILE *arq = NULL;
-    membros *membro = alloc_membro();
+    membros **diretorio = NULL;
+    long int qtde_membros = 0;
 
-    membros *diretorio[MAX_MEMBER];
+    if (argc < 3) {
+        fprintf(stderr, "Forma de uso: vinac <opção> <archive> [membro1 membro2 ...]\n");
+        exit(1);
+    }
 
-    while ((option = getopt(argc, argv, "p:i:m:x:r:c")) != -1) {
+    archive_name = argv[2];
+
+    FILE *arq = fopen(archive_name, "rb+");
+    if (!arq) {
+        arq = fopen(archive_name, "wb+");
+        if (!arq) {
+            perror("Erro ao abrir ou criar o arquivo archive");
+            exit(1);
+        }
+    }
+
+    interpreta_diretorio(arq, &diretorio, &qtde_membros);
+
+    membros *novo_membro = alloc_membro();
+
+    while ((option = getopt(argc, argv, "i:p:m:x:r:c")) != -1) {
         switch (option) {
-            case 'p':
-                archive_name = strcat(strdup(optarg), ".vc");
-
+            case 'i': { // Inserir membros
+                printf("-i em implementação...\n");
+                break;
+            }
+            case 'p': // Placeholder para a funcionalidade -p
+                printf("Inserindo membros...\n");
                 for (int i = optind; i < argc; i++) {
-                    inserir(membro, archive_name, argv[i]);  // Inserir cada membro
+                    inserir(novo_membro, archive_name, argv[i], &diretorio, &qtde_membros);
                 }
                 break;
-            case 'i':
-                printf("-i em implementacao...\n");
+            case 'm': // Placeholder para mover membros
+                printf("-m em implementação...\n");
                 break;
-            case 'm':
-                printf("-m em implementacao...\n");
+            case 'x': // Placeholder para extrair membros
+                printf("-x em implementação...\n");
                 break;
-            case 'x':
-                printf("-x em implementacao...\n");
+            case 'r': // Placeholder para remover membros
+                printf("-r em implementação...\n");
                 break;
-            case 'r':
-                printf("-r em implementacao...\n");
+            case 'c': // Listar conteúdo do diretório
+                printf("Listando conteúdo do arquivo %s:\n", archive_name);
+                for (int i = 0; i < qtde_membros; i++) {
+                    printf("Membro %d: %s, UID: %u, Tamanho: %zu bytes, Offset: %zu\n",
+                           i + 1,
+                           diretorio[i]->nome_do_membro,
+                           diretorio[i]->UID,
+                           diretorio[i]->tamanho_original,
+                           diretorio[i]->offset);
+                }
                 break;
-            case 'c':
-                printf("-c em implementacao...\n");
-                break;
-            default:
+            default: // Opção inválida
                 fprintf(stderr, "Forma de uso: vinac <opção> <archive> [membro1 membro2 ...]\n");
                 exit(1);
         }
-    }   
+    }
 
+    // Liberar recursos alocados
+    for (int i = 0; i < qtde_membros; i++) {
+        free(diretorio[i]->nome_do_membro);
+        free(diretorio[i]);
+    }
+    free(diretorio);
+    free(novo_membro);
+
+    fclose(arq);
+    return 0;
 }
