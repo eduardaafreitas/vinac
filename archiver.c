@@ -1,4 +1,5 @@
 #include "archiver.h"
+#include "lz.h"
 #include <sys/stat.h>
 #define MAX_MEMBER 50
 
@@ -64,41 +65,6 @@ int stats(const char *file_name, membros *membro) {
     return 0; // Retorna 0 para indicar sucesso
 }
 
-void escrever_diretorio(FILE *arq, membros *membro) {
-    if (!arq || !arq || !membro) {
-        fprintf(stderr, "Arquivo ou membro inválido.\n");
-        return;
-    }
-
-    // Abrir o arquivo no modo de leitura/escrita
-    arq = fopen("archive.vc", "rb+");
-    if (!arq) {
-        perror("Erro ao abrir o arquivo archive para escrita do diretório");
-        return;
-    }
-
-    // Posicionar o ponteiro no final do arquivo
-    fseek(arq, 0, SEEK_END);
-
-    // Escrever as informações do diretório
-    fwrite(&membro->UID, sizeof(membro->UID), 1, arq);
-    fwrite(&membro->tamanho_original, sizeof(membro->tamanho_original), 1, arq);
-    fwrite(&membro->tamanho_disco, sizeof(membro->tamanho_disco), 1, arq);
-    fwrite(&membro->data_modificacao, sizeof(membro->data_modificacao), 1, arq);
-    fwrite(&membro->ordem_arquivo, sizeof(membro->ordem_arquivo), 1, arq);
-    fwrite(&membro->offset, sizeof(membro->offset), 1, arq);
-
-    // Escrever o nome do membro
-    size_t nome_length = strlen(membro->nome_do_membro) + 1; // Inclui o '\0'
-    fwrite(&nome_length, sizeof(nome_length), 1, arq);
-    fwrite(membro->nome_do_membro, sizeof(char), nome_length, arq);
-
-    // Fechar o arquivo
-    fclose(arq);
-
-    printf("Diretório do membro %s escrito com sucesso.\n", membro->nome_do_membro);
-}
-
 void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membros) {
     if (arq == NULL) {
         fprintf(stderr, "Arquivo não pode ser aberto.\n");
@@ -108,7 +74,8 @@ void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membro
     // Ler a quantidade de membros do cabeçalho
     fseek(arq, 0, SEEK_SET);
     if (fread(qtde_membros, sizeof(int), 1, arq) != 1) {
-        fprintf(stderr, "Erro ao ler a quantidade de membros no cabeçalho.\n");
+        fprintf(stderr, "Este arquivo ainda nao possui membros.\n");
+        //exit(1);
     }
 
     // Alocar memória para o array de ponteiros de membros
@@ -148,8 +115,7 @@ void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membro
     printf("Diretório interpretado com sucesso. Total de membros: %ld\n", *qtde_membros);
 }
 
-
-void inserir(membros *novo_membro, char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
+void inserir(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
     FILE *arq;
     FILE *member_file;
     char buffer[1024];
@@ -183,18 +149,22 @@ void inserir(membros *novo_membro, char *archive_name, char *member_name, membro
         }
     }
 
-    // Abrir o arquivo do membro para leitura
-    member_file = fopen(member_name, "rb");
-    if (!member_file) {
-        perror("Erro ao abrir o arquivo do membro");
-        fclose(arq);
-        return;
-    }
+    // Criar uma nova instância para o membro
+    membros *novo_membro = alloc_membro();
 
     // Obter informações do arquivo membro
     stats(member_name, novo_membro);
     novo_membro->offset = ftell(arq); // Posição no arquivo archive
     novo_membro->ordem_arquivo = *qtde_membros + 1;
+
+    // Abrir o arquivo do membro para leitura
+    member_file = fopen(member_name, "rb");
+    if (!member_file) {
+        perror("Erro ao abrir o arquivo do membro");
+        free(novo_membro);
+        fclose(arq);
+        return;
+    }
 
     // Escrever os dados do membro no final do archive
     fseek(arq, 0, SEEK_END);
@@ -206,11 +176,18 @@ void inserir(membros *novo_membro, char *archive_name, char *member_name, membro
     // Atualizar o diretório
     if (substituir_indice != -1) {
         // Substituir membro existente
+        free((*diretorio)[substituir_indice]->nome_do_membro);
         free((*diretorio)[substituir_indice]);
         (*diretorio)[substituir_indice] = novo_membro;
     } else {
         // Inserir novo membro
         *diretorio = realloc(*diretorio, (*qtde_membros + 1) * sizeof(membros *));
+        if (*diretorio == NULL) {
+            fprintf(stderr, "Erro ao realocar memória para o diretório.\n");
+            free(novo_membro);
+            fclose(arq);
+            return;
+        }
         (*diretorio)[*qtde_membros] = novo_membro;
         (*qtde_membros)++;
     }
@@ -218,21 +195,138 @@ void inserir(membros *novo_membro, char *archive_name, char *member_name, membro
     // Escrever o diretório atualizado no archive
     fseek(arq, 0, SEEK_SET);
     fwrite(qtde_membros, sizeof(int), 1, arq); // Escreve o número total de membros
-    for (int i = 0; i < *qtde_membros; i++) {
-        membros *membro = (*diretorio)[i];
-        fwrite(&membro->UID, sizeof(membro->UID), 1, arq);
-        fwrite(&membro->tamanho_original, sizeof(membro->tamanho_original), 1, arq);
-        fwrite(&membro->tamanho_disco, sizeof(membro->tamanho_disco), 1, arq);
-        fwrite(&membro->data_modificacao, sizeof(membro->data_modificacao), 1, arq);
-        fwrite(&membro->ordem_arquivo, sizeof(membro->ordem_arquivo), 1, arq);
-        fwrite(&membro->offset, sizeof(membro->offset), 1, arq);
-
-        // Escrever o nome do membro
-        size_t nome_length = strlen(membro->nome_do_membro) + 1;
-        fwrite(&nome_length, sizeof(nome_length), 1, arq);
-        fwrite(membro->nome_do_membro, sizeof(char), nome_length, arq);
-    }
-
+    atualiza_diretorio(qtde_membros,  diretorio, arq);
     fclose(arq);
     printf("Membro %s inserido com sucesso no arquivo %s.\n", member_name, archive_name);
 }
+
+void inserir_comprimido(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
+    FILE *archive = fopen(archive_name, "rb+");
+    if (!archive) {
+        archive = fopen(archive_name, "wb+");
+        if (!archive) {
+            fprintf(stderr, "Erro ao criar arquivo archive em inserir_comprimido.\n");
+            return;
+        }
+        int zero = 0;
+        fwrite(&zero, sizeof(int), 1, archive);
+    }
+
+    // Carregar o diretório existente
+    interpreta_diretorio(archive, diretorio, qtde_membros);
+
+    // Abrir o arquivo do membro para leitura
+    FILE *in = fopen(member_name, "rb");
+    if (!in) {
+        fprintf(stderr, "Erro ao abrir o arquivo %s em inserir_comprimido.\n", member_name);
+        fclose(archive);
+        return;
+    }
+
+    // Obter o tamanho do arquivo original
+    fseek(in, 0, SEEK_END);
+    long original_size = ftell(in);
+    fseek(in, 0, SEEK_SET);
+
+    // Ler os dados do arquivo original
+    unsigned char *data = malloc(original_size);
+    if (!data) {
+        fprintf(stderr, "Erro ao alocar memória para dados originais.\n");
+        fclose(in);
+        fclose(archive);
+        return;
+    }
+    fread(data, 1, original_size, in);
+    fclose(in);
+
+    // Criar espaço para os dados comprimidos
+    unsigned char *compressed_data = malloc(original_size);
+    if (!compressed_data) {
+        fprintf(stderr, "Erro ao alocar memória para dados comprimidos.\n");
+        free(data);
+        fclose(archive);
+        return;
+    }
+
+    // Comprimir os dados
+    int compressed_size = LZ_Compress(data, compressed_data, original_size);
+    if (compressed_size >= original_size) {
+        // Inserir sem compressão se não houver ganho
+        free(data);
+        free(compressed_data);
+        fclose(archive);
+        inserir(archive_name, member_name, diretorio, qtde_membros);
+        return;
+    }
+
+    free(data);
+
+    // Obter metadados do arquivo original
+    struct stat st;
+    stat(member_name, &st);
+
+    // Preencher a estrutura membros
+    membros *novo_membro = alloc_membro();
+    novo_membro->nome_do_membro = strdup(member_name);
+    novo_membro->UID = (unsigned int)getuid();
+    novo_membro->tamanho_original = (unsigned int)original_size;
+    novo_membro->tamanho_disco = (unsigned int)compressed_size;
+    novo_membro->data_modificacao = st.st_mtime;
+    novo_membro->ordem_arquivo = *qtde_membros + 1;
+
+    // Obter o offset no arquivo archive
+    fseek(archive, 0, SEEK_END);
+    novo_membro->offset = ftell(archive);
+
+    // Escrever os dados comprimidos no archive
+    fwrite(compressed_data, 1, compressed_size, archive);
+    free(compressed_data);
+
+    // Atualizar o diretório
+    *diretorio = realloc(*diretorio, (*qtde_membros + 1) * sizeof(membros *));
+    if (!*diretorio) {
+        fprintf(stderr, "Erro ao realocar memória para o diretório.\n");
+        free(novo_membro);
+        fclose(archive);
+        return;
+    }
+    (*diretorio)[*qtde_membros] = novo_membro;
+    (*qtde_membros)++;
+
+    // Salvar o diretório atualizado
+    fseek(archive, 0, SEEK_SET);
+    fwrite(qtde_membros, sizeof(int), 1, archive); // Atualizar o número de membros
+    atualiza_diretorio(qtde_membros,  diretorio, archive);
+
+    fclose(archive);
+    printf("Arquivo %s inserido comprimido no arquivo %s.\n", member_name, archive_name);
+}
+
+void atualiza_diretorio(long int *qtde_membros, membros ***diretorio, FILE *archive){
+    for (int i = 0; i < *qtde_membros; i++) {
+        membros *membro = (*diretorio)[i];
+        fwrite(&membro->UID, sizeof(membro->UID), 1, archive);
+        fwrite(&membro->tamanho_original, sizeof(membro->tamanho_original), 1, archive);
+        fwrite(&membro->tamanho_disco, sizeof(membro->tamanho_disco), 1, archive);
+        fwrite(&membro->data_modificacao, sizeof(membro->data_modificacao), 1, archive);
+        fwrite(&membro->ordem_arquivo, sizeof(membro->ordem_arquivo), 1, archive);
+        fwrite(&membro->offset, sizeof(membro->offset), 1, archive);
+
+        // Escrever o nome do membro
+        size_t nome_length = strlen(membro->nome_do_membro) + 1;
+        fwrite(&nome_length, sizeof(size_t), 1, archive);
+        fwrite(membro->nome_do_membro, sizeof(char), nome_length, archive);
+    }
+}
+
+void listar(long int qtde_membros, membros **diretorio){
+    for (int i = 0; i < qtde_membros; i++) {
+        printf("Membro %d: %s, UID: %u, Tamanho: %zu bytes, Offset: %zu\n",
+               i + 1,
+               diretorio[i]->nome_do_membro,
+               diretorio[i]->UID,
+               diretorio[i]->tamanho_original,
+               diretorio[i]->offset);
+    }
+}
+

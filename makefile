@@ -3,8 +3,8 @@ LIBS = -lm
 CC = gcc
 EXEC = vina
 MAIN = main.c
-INCLUDE = archiver.c
-OBJS = main.o archiver.o
+INCLUDE = archiver.c lz.c
+OBJS = main.o archiver.o lz.o
 
 all: hello
 
@@ -13,6 +13,7 @@ hello: $(OBJS)
 
 main.o: main.c archiver.h 
 archiver.o: archiver.c archiver.h 
+lz.o: lz.c lz.h
 
 clean:
 	-rm -f *~ *.o

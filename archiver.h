@@ -18,23 +18,16 @@ struct membros {
 };
 typedef struct membros membros;
 
-//diretorio => vetor de ponteiros
-
-// struct archive {
-//     FILE *diretorio;
-//     membros *membro;
-// };
-// typedef struct archive archive;
-
 membros *alloc_membro();
 
-FILE *inicia_archive(char *archive_name);
 int stats(const char *file_name, membros *membro);
-
 void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membros);
-
-void inserir(membros *novo_membro, char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
+void inserir(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
+void listar(long int qtde_membros, membros **diretorio);
+void inserir_comprimido(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
+void atualiza_diretorio(long int *qtde_membros, membros ***diretorio, FILE *archive);
 void escrever_diretorio(FILE *arq, membros *membro);
+
 membros *remover(membros *membro);
 void atualizar(membros *membro);
 void destruir(membros *membro);
