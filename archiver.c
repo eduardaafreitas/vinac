@@ -329,4 +329,3 @@ void listar(long int qtde_membros, membros **diretorio){
                diretorio[i]->offset);
     }
 }
-
