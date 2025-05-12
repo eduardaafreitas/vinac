@@ -35,8 +35,6 @@ void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membro
 
 void inserir(membros *novo_membro, char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
 void escrever_diretorio(FILE *arq, membros *membro);
-
-
 membros *remover(membros *membro);
 void atualizar(membros *membro);
 void destruir(membros *membro);

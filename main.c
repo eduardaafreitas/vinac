@@ -14,13 +14,10 @@ int main(int argc, char *argv[]) {
 
     archive_name = argv[2];
 
-    FILE *arq = fopen(archive_name, "rb+");
+    FILE *arq = fopen(archive_name, "a+");
     if (!arq) {
-        arq = fopen(archive_name, "wb+");
-        if (!arq) {
-            perror("Erro ao abrir ou criar o arquivo archive");
-            exit(1);
-        }
+        perror("Erro ao abrir ou criar o arquivo archive");
+        exit(1);
     }
 
     interpreta_diretorio(arq, &diretorio, &qtde_membros);
@@ -36,7 +33,7 @@ int main(int argc, char *argv[]) {
             case 'p': // Placeholder para a funcionalidade -p
                 printf("Inserindo membros...\n");
                 for (int i = optind; i < argc; i++) {
-                    inserir(novo_membro, archive_name, argv[i], &diretorio, &qtde_membros);
+                    inserir(novo_membro, arq, argv[i], &diretorio, &qtde_membros);
                 }
                 break;
             case 'm': // Placeholder para mover membros

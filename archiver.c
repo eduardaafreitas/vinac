@@ -99,41 +99,55 @@ void escrever_diretorio(FILE *arq, membros *membro) {
     printf("Diretório do membro %s escrito com sucesso.\n", membro->nome_do_membro);
 }
 
-void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membros){
+void interpreta_diretorio(FILE *arq, membros ***diretorio, long int *qtde_membros) {
     if (arq == NULL) {
         fprintf(stderr, "Arquivo não pode ser aberto.\n");
         exit(EXIT_FAILURE);
     }
 
-    fseek(arq, 0, SEEK_END);
-    size_t tamanho_arquivo = ftell(arq);
+    // Ler a quantidade de membros do cabeçalho
+    fseek(arq, 0, SEEK_SET);
+    if (fread(qtde_membros, sizeof(int), 1, arq) != 1) {
+        fprintf(stderr, "Erro ao ler a quantidade de membros no cabeçalho.\n");
+    }
 
-    // calcula a quantidade de membros no arquivo
-    *qtde_membros = tamanho_arquivo / sizeof(membros);
-    fseek(arq, 0, SEEK_SET); // Volta para o início do arquivo
-
-    // aloca memória para o array de ponteiros de membros
+    // Alocar memória para o array de ponteiros de membros
     *diretorio = (membros **)malloc(*qtde_membros * sizeof(membros *));
     if (*diretorio == NULL) {
         fprintf(stderr, "Erro ao alocar memória para o diretório.\n");
         exit(EXIT_FAILURE);
     }
 
-    // le os dados do arquivo e aloca memória para cada membro
+    // Ler cada membro do arquivo
     for (int i = 0; i < *qtde_membros; i++) {
         (*diretorio)[i] = (membros *)malloc(sizeof(membros));
         if ((*diretorio)[i] == NULL) {
             fprintf(stderr, "Erro ao alocar memória para o membro %d.\n", i);
             exit(EXIT_FAILURE);
         }
-        printf("teste4\n");
-        size_t lidos = fread((*diretorio)[i], sizeof(membros), 1, arq);
-        if (lidos != 1) {
-            fprintf(stderr, "Erro ao ler o membro %d do arquivo.\n", i);
+
+        // Ler dados fixos do membro
+        fread(&(*diretorio)[i]->UID, sizeof((*diretorio)[i]->UID), 1, arq);
+        fread(&(*diretorio)[i]->tamanho_original, sizeof((*diretorio)[i]->tamanho_original), 1, arq);
+        fread(&(*diretorio)[i]->tamanho_disco, sizeof((*diretorio)[i]->tamanho_disco), 1, arq);
+        fread(&(*diretorio)[i]->data_modificacao, sizeof((*diretorio)[i]->data_modificacao), 1, arq);
+        fread(&(*diretorio)[i]->ordem_arquivo, sizeof((*diretorio)[i]->ordem_arquivo), 1, arq);
+        fread(&(*diretorio)[i]->offset, sizeof((*diretorio)[i]->offset), 1, arq);
+
+        // Ler o nome do membro
+        size_t nome_length;
+        fread(&nome_length, sizeof(size_t), 1, arq);
+        (*diretorio)[i]->nome_do_membro = (char *)malloc(nome_length);
+        if ((*diretorio)[i]->nome_do_membro == NULL) {
+            fprintf(stderr, "Erro ao alocar memória para o nome do membro %d.\n", i);
             exit(EXIT_FAILURE);
         }
+        fread((*diretorio)[i]->nome_do_membro, sizeof(char), nome_length, arq);
     }
+
+    printf("Diretório interpretado com sucesso. Total de membros: %ld\n", *qtde_membros);
 }
+
 
 void inserir(membros *novo_membro, char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
     FILE *arq;
