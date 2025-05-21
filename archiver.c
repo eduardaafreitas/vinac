@@ -442,7 +442,7 @@ void extrair(char *archive_name, char *member_name, membros ***diretorio, long i
             return;
         }
 
-        LZ_Decompress(data, decompressed_data, membro->tamanho_disco);
+        LZ_Uncompress(data, decompressed_data, membro->tamanho_disco);
         fwrite(decompressed_data, 1, membro->tamanho_original, out);
         free(decompressed_data);
     } else {
