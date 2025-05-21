@@ -37,12 +37,21 @@ int main(int argc, char *argv[]) {
                 break;
             case 'm': //mover 
                 printf("-m em implementação...\n");
+                mover(archive_name, argv[optind], &diretorio, &qtde_membros, atoi(argv[optind + 1]));
+                optind += 2; // Pular o membro e a nova posição
+
                 break;
             case 'x': //extrair 
                 printf("-x em implementação...\n");
+                for (int i = optind; i < argc; i++) {
+                    extrair(archive_name, argv[i], &diretorio, &qtde_membros);
+                }
                 break;
             case 'r': //remover 
                 printf("-r em implementação...\n");
+                for (int i = optind; i < argc; i++) {
+                    remover(archive_name, argv[i], &diretorio, &qtde_membros);
+                }
                 break;
             case 'c': // Listar conteúdo do diretório
                 printf("Listando conteúdo do arquivo %s:\n", archive_name);

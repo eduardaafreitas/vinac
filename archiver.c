@@ -329,3 +329,194 @@ void listar(long int qtde_membros, membros **diretorio){
                diretorio[i]->offset);
     }
 }
+
+void remover(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
+    FILE *archive = fopen(archive_name, "rb+");
+    if (!archive) {
+        fprintf(stderr, "Erro ao abrir arquivo archive em remover.\n");
+        return;
+    }
+
+    // Carregar o diretório
+    interpreta_diretorio(archive, diretorio, qtde_membros);
+
+    // Localizar o membro a ser removido
+    int indice = -1;
+    for (int i = 0; i < *qtde_membros; i++) {
+        if (strcmp((*diretorio)[i]->nome_do_membro, member_name) == 0) {
+            indice = i;
+            break;
+        }
+    }
+
+    if (indice == -1) {
+        fprintf(stderr, "Erro: Membro %s não encontrado no arquivo.\n", member_name);
+        fclose(archive);
+        return;
+    }
+
+    // Remover o membro do diretório
+    free((*diretorio)[indice]->nome_do_membro);
+    free((*diretorio)[indice]);
+    for (int i = indice; i < *qtde_membros - 1; i++) {
+        (*diretorio)[i] = (*diretorio)[i + 1];
+    }
+    (*qtde_membros)--;
+
+    // Atualizar o diretório no arquivo
+    fseek(archive, 0, SEEK_SET);
+    fwrite(qtde_membros, sizeof(int), 1, archive);
+    for (int i = 0; i < *qtde_membros; i++) {
+        membros *membro = (*diretorio)[i];
+        fwrite(&membro->UID, sizeof(membro->UID), 1, archive);
+        fwrite(&membro->tamanho_original, sizeof(membro->tamanho_original), 1, archive);
+        fwrite(&membro->tamanho_disco, sizeof(membro->tamanho_disco), 1, archive);
+        fwrite(&membro->data_modificacao, sizeof(membro->data_modificacao), 1, archive);
+        fwrite(&membro->ordem_arquivo, sizeof(membro->ordem_arquivo), 1, archive);
+        fwrite(&membro->offset, sizeof(membro->offset), 1, archive);
+
+        size_t nome_length = strlen(membro->nome_do_membro) + 1;
+        fwrite(&nome_length, sizeof(size_t), 1, archive);
+        fwrite(membro->nome_do_membro, sizeof(char), nome_length, archive);
+    }
+
+    fclose(archive);
+    printf("Membro %s removido com sucesso do arquivo %s.\n", member_name, archive_name);
+}
+
+void extrair(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros) {
+    FILE *archive = fopen(archive_name, "rb");
+    if (!archive) {
+        fprintf(stderr, "Erro ao abrir arquivo archive em extrair.\n");
+        return;
+    }
+
+    // Carregar o diretório
+    interpreta_diretorio(archive, diretorio, qtde_membros);
+
+    // Localizar o membro a ser extraído
+    int indice = -1;
+    for (int i = 0; i < *qtde_membros; i++) {
+        if (strcmp((*diretorio)[i]->nome_do_membro, member_name) == 0) {
+            indice = i;
+            break;
+        }
+    }
+
+    if (indice == -1) {
+        fprintf(stderr, "Erro: Membro %s não encontrado no arquivo.\n", member_name);
+        fclose(archive);
+        return;
+    }
+
+    membros *membro = (*diretorio)[indice];
+
+    // Criar o arquivo para extração
+    FILE *out = fopen(membro->nome_do_membro, "wb");
+    if (!out) {
+        fprintf(stderr, "Erro ao criar arquivo %s para extração.\n", membro->nome_do_membro);
+        fclose(archive);
+        return;
+    }
+
+    // Ler os dados do membro do arquivo archive
+    unsigned char *data = malloc(membro->tamanho_disco);
+    if (!data) {
+        fprintf(stderr, "Erro ao alocar memória para extração.\n");
+        fclose(out);
+        fclose(archive);
+        return;
+    }
+
+    fseek(archive, membro->offset, SEEK_SET);
+    fread(data, 1, membro->tamanho_disco, archive);
+
+    // Verificar se o membro está comprimido
+    if (membro->tamanho_disco < membro->tamanho_original) {
+        unsigned char *decompressed_data = malloc(membro->tamanho_original);
+        if (!decompressed_data) {
+            fprintf(stderr, "Erro ao alocar memória para descompressão.\n");
+            free(data);
+            fclose(out);
+            fclose(archive);
+            return;
+        }
+
+        LZ_Decompress(data, decompressed_data, membro->tamanho_disco);
+        fwrite(decompressed_data, 1, membro->tamanho_original, out);
+        free(decompressed_data);
+    } else {
+        fwrite(data, 1, membro->tamanho_disco, out);
+    }
+
+    free(data);
+    fclose(out);
+    fclose(archive);
+
+    printf("Membro %s extraído com sucesso.\n", membro->nome_do_membro);
+}
+
+
+void mover(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros, int nova_posicao) {
+    if (nova_posicao < 0 || nova_posicao >= *qtde_membros) {
+        fprintf(stderr, "Erro: Posição inválida.\n");
+        return;
+    }
+
+    FILE *archive = fopen(archive_name, "rb+");
+    if (!archive) {
+        fprintf(stderr, "Erro ao abrir arquivo archive em mover.\n");
+        return;
+    }
+
+    // Carregar o diretório
+    interpreta_diretorio(archive, diretorio, qtde_membros);
+
+    // Localizar o membro a ser movido
+    int indice = -1;
+    for (int i = 0; i < *qtde_membros; i++) {
+        if (strcmp((*diretorio)[i]->nome_do_membro, member_name) == 0) {
+            indice = i;
+            break;
+        }
+    }
+
+    if (indice == -1) {
+        fprintf(stderr, "Erro: Membro %s não encontrado no arquivo.\n", member_name);
+        fclose(archive);
+        return;
+    }
+
+    // Mover o membro na lista
+    membros *membro = (*diretorio)[indice];
+    if (indice < nova_posicao) {
+        for (int i = indice; i < nova_posicao; i++) {
+            (*diretorio)[i] = (*diretorio)[i + 1];
+        }
+    } else {
+        for (int i = indice; i > nova_posicao; i--) {
+            (*diretorio)[i] = (*diretorio)[i - 1];
+        }
+    }
+    (*diretorio)[nova_posicao] = membro;
+
+    // Regravar o diretório atualizado
+    fseek(archive, 0, SEEK_SET);
+    fwrite(qtde_membros, sizeof(int), 1, archive);
+    for (int i = 0; i < *qtde_membros; i++) {
+        membros *membro = (*diretorio)[i];
+        fwrite(&membro->UID, sizeof(membro->UID), 1, archive);
+        fwrite(&membro->tamanho_original, sizeof(membro->tamanho_original), 1, archive);
+        fwrite(&membro->tamanho_disco, sizeof(membro->tamanho_disco), 1, archive);
+        fwrite(&membro->data_modificacao, sizeof(membro->data_modificacao), 1, archive);
+        fwrite(&membro->ordem_arquivo, sizeof(membro->ordem_arquivo), 1, archive);
+        fwrite(&membro->offset, sizeof(membro->offset), 1, archive);
+
+        size_t nome_length = strlen(membro->nome_do_membro) + 1;
+        fwrite(&nome_length, sizeof(size_t), 1, archive);
+        fwrite(membro->nome_do_membro, sizeof(char), nome_length, archive);
+    }
+
+    fclose(archive);
+    printf("Membro %s movido para a posição %d no arquivo %s.\n", member_name, nova_posicao, archive_name);
+}

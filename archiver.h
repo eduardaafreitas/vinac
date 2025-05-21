@@ -28,4 +28,8 @@ void inserir_comprimido(char *archive_name, char *member_name, membros ***direto
 void atualiza_diretorio(long int *qtde_membros, membros ***diretorio, FILE *archive);
 void escrever_diretorio(FILE *arq, membros *membro);
 
+void remover(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
+void extrair(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros);
+void mover(char *archive_name, char *member_name, membros ***diretorio, long int *qtde_membros, int nova_posicao);
+
 #endif
